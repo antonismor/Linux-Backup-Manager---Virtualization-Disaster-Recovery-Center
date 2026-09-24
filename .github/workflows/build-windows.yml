@@ -51,6 +51,30 @@ jobs:
           }
           Set-Content 'src/Services/HostStore.cs' $store -Encoding UTF8
 
+      - name: Apply light silver theme
+        shell: pwsh
+        run: |
+          $replacements = [ordered]@{
+            '#071426'='#F4F1EA'; '#0B1D33'='#E7E3DA'; '#0E243E'='#FFFFFF'; '#1687FF'='#D6B04C';
+            '#F5F9FF'='#111111'; '#8EA8C5'='#4A4A4A'; '#CFE3FA'='#111111'; '#123A64'='#DDD5C4';
+            '#163553'='#D8D8D8'; '#081A2E'='#FFFFFF'; '#2A4F73'='#B8B3AA'; '#091B30'='#FFFFFF';
+            '#E8F3FF'='#111111'; '#244A6B'='#B8B3AA'; '#0B2038'='#F6F4EF'; '#0D2642'='#EEEAE2';
+            '#183B5D'='#D0CAC0'; '#08192C'='#EEEAE2'; '#17436D'='#C8C2B7'; '#35A9FF'='#111111';
+            '#A8C5E4'='#333333'; '#3427A8'='#E1C46B'; '#07182A'='#F2EFE8'; '#0F65D8'='#D6B04C';
+            '#20466A'='#C8C2B7'; '#0A1B30'='#F7F5F0'; '#1E4D78'='#C8C2B7'; '#9ACDFF'='#222222';
+            '#0A1D34'='#F7F5F0'; '#1B3F62'='#D8D2C8'; '#2389FF'='#C89D32'; '#21A4FF'='#C89D32';
+            '#34AEFF'='#C89D32'; '#3BABFF'='#C89D32'; '#75C6FF'='#555555'; '#78BFFF'='#555555';
+            '#B9CCE0'='#444444'; '#A8B8CA'='#555555'; '#6F8CA8'='#666666'; '#D7EAFF'='#111111';
+            '#BFE0FF'='#111111'; '#05111F'='#FFFFFF'; '#3529AD'='#E1C46B'; '#214568'='#C8C2B7';
+            '#33E58B'='#2E8B57'; '#35D98B'='#2E8B57'; '#FF9CAC'='#8B1E2D'
+          }
+          Get-ChildItem src -Recurse -Filter *.xaml | ForEach-Object {
+            $x = Get-Content $_.FullName -Raw
+            foreach ($kv in $replacements.GetEnumerator()) { $x = $x.Replace($kv.Key, $kv.Value) }
+            $x = $x.Replace('Foreground="White"', 'Foreground="#111111"')
+            Set-Content $_.FullName $x -Encoding UTF8
+          }
+
       - name: Restore
         shell: pwsh
         run: dotnet restore src/LinuxBackupManager.csproj
@@ -74,7 +98,7 @@ jobs:
       - name: Upload Windows package
         uses: actions/upload-artifact@v4
         with:
-          name: LinuxBackupManager-win-x64-v1.0.0
+          name: LinuxBackupManager-win-x64-v1.0.1-light
           path: Dist/*
           if-no-files-found: error
           compression-level: 9
@@ -88,7 +112,7 @@ jobs:
           run_attempt=${{ github.run_attempt }}
           commit=${{ github.sha }}
           job_status=${{ job.status }}
-          artifact=LinuxBackupManager-win-x64-v1.0.0
+          artifact=LinuxBackupManager-win-x64-v1.0.1-light
           "@ | Set-Content build-status.txt
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
