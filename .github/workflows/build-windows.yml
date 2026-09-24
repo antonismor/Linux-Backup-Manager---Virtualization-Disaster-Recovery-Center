@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   build:
@@ -50,6 +50,16 @@ jobs:
             $store = "using System.IO;`r`n" + $store
           }
           Set-Content 'src/Services/HostStore.cs' $store -Encoding UTF8
+
+          # .NET 10 already provides ProtectedData on Windows; remove the redundant
+          # package reference to keep restore/build warning-free.
+          $project = Get-Content 'src/LinuxBackupManager.csproj' -Raw
+          $project = [regex]::Replace(
+            $project,
+            '(?m)^\s*<PackageReference\s+Include="System\.Security\.Cryptography\.ProtectedData"[^>]*/>\s*\r?\n?',
+            ''
+          )
+          Set-Content 'src/LinuxBackupManager.csproj' $project -Encoding UTF8
 
       - name: Apply light silver theme
         shell: pwsh
@@ -114,8 +124,20 @@ jobs:
           job_status=${{ job.status }}
           artifact=LinuxBackupManager-win-x64-v1.0.1-light
           "@ | Set-Content build-status.txt
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add build-status.txt
-          git commit -m "Update Windows build status [skip ci]" || exit 0
-          git push
+
+          @"
+          ## Windows build status
+          - **Run:** ${{ github.run_id }} (attempt ${{ github.run_attempt }})
+          - **Commit:** `${{ github.sha }}`
+          - **Job status:** ${{ job.status }}
+          - **Artifact:** `LinuxBackupManager-win-x64-v1.0.1-light`
+          "@ | Add-Content $env:GITHUB_STEP_SUMMARY
+
+      - name: Upload build status
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-status-${{ github.run_id }}-${{ github.run_attempt }}
+          path: build-status.txt
+          if-no-files-found: error
+          retention-days: 14
