@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   build:
@@ -257,7 +257,11 @@ jobs:
 
               private async void Refresh_Click(object sender, RoutedEventArgs e) => await RefreshHistoryAsync();
 
-              private static string Csv(string value) => ((char)34) + (value ?? "").Replace(((char)34).ToString(), new string((char)34, 2)) + ((char)34);
+              private static string Csv(string value)
+          {
+              const string quote = "\"";
+              return quote + (value ?? "").Replace(quote, quote + quote) + quote;
+          }
 
               private void ExportCsv_Click(object sender, RoutedEventArgs e)
               {
@@ -397,12 +401,6 @@ jobs:
           - **Job status:** ${{ job.status }}
           - **Artifact:** `LinuxBackupManager-win-x64-v1.0.3-real-history`
           "@ | Add-Content $env:GITHUB_STEP_SUMMARY
-
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add build-status.txt
-          git commit -m "Update Windows build status [skip ci]" || exit 0
-          git push
 
       - name: Upload build status
         if: always()
