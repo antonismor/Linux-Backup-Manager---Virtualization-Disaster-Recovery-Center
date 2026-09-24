@@ -26,9 +26,7 @@ def mount_target(name):
         sec=SecretStore().get(cfg["credential"]); cred=Path("/run/lbm-vdrc")/f"cifs-{safe_name(name)}.cred"
         lines=[f'username={sec.get("username","")}',f'password={sec.get("password","")}']
         if sec.get("domain"):lines.append(f'domain={sec["domain"]}')
-        cred.write_text("
-".join(lines)+"
-",encoding="utf-8"); os.chmod(cred,0o600)
+        cred.write_text("\n".join(lines)+"\n",encoding="utf-8"); os.chmod(cred,0o600)
         share=cfg["share"] if cfg["share"].startswith("//") else "//"+cfg["share"].lstrip("/")
         opts=f'credentials={cred},vers={cfg.get("vers","3.1.1")},iocharset=utf8,_netdev,{cfg.get("options","rw")}'
         try: run(["mount","-t","cifs",share,str(mp),"-o",opts])
