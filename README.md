@@ -1,342 +1,372 @@
-# Linux Backup Manager - Virtualization & Disaster Recovery Center
+# LINUX BACKUP MANAGER – VIRTUALIZATION & DISASTER RECOVERY CENTER
 
-**Linux Backup Manager - Virtualization & Disaster Recovery Center (LBM-VDRC)** is an independent open-source control plane for virtual-machine inventory, backup orchestration, storage targets, scheduling, reporting, and safe cross-hypervisor disaster-recovery planning.
+> **Status: UNDER ACTIVE DEVELOPMENT / WORK IN PROGRESS**
+>
+> This project is still under construction. The current Windows build is usable for development, testing, host connectivity, backup orchestration and recovery workflows, but it should not yet be treated as a finished enterprise production release. Features are being continuously expanded and validated against real Linux, Proxmox VE and KVM/libvirt environments.
 
-**Version:** `1.0.0`  
-**License:** MIT  
-**Designed & Developed by:** `antonios.mortos@outlook.com`
+**Current Windows build:** `v1.0.3`  
+**Platform:** Windows x64  
+**Framework:** .NET 10 / WPF  
+**Distribution:** Self-contained single executable  
+**Author:** Antonios Mortos  
+**Designed and Development by:** [antonios.mortos@outlook.com](mailto:antonios.mortos@outlook.com)
 
-> This project is independent from the original Linux Backup Manager. It has its own executable, configuration tree, state, logs, schedules and managed storage mounts.
+---
 
-## Highlights
+## Overview
 
-- Fixed-width ANSI terminal UI with aligned right-side borders.
-- Arrow-key / ENTER / ESC navigation and colored status states.
-- Proxmox VE inventory through the PVE HTTPS API.
-- Proxmox native `vzdump` backup orchestration.
-- VMware ESXi/vCenter inventory and OVF export through `govc`.
-- Microsoft Hyper-V inventory and `Export-VM` through PowerShell over SSH.
-- Local, NFS, SMB/CIFS/Samba and iSCSI storage profiles.
-- Reusable credential profiles created before jobs.
-- Root-only unattended credential storage.
-- Per-job `systemd` services and recurring timers.
-- `Persistent=true` so missed scheduled work can run after reboot.
-- SMTP SUCCESS / FAILED reports.
-- JSONL history, application log and diagnostics.
-- Cross-hypervisor migration planning/preflight framework.
-- GitHub Actions CI and unit tests for UI alignment.
+**LINUX BACKUP MANAGER – VIRTUALIZATION & DISASTER RECOVERY CENTER** is a Windows management console designed to centrally administer Linux backup, virtualization and disaster-recovery workflows from a single graphical interface.
 
-## Production status
+The Windows application connects to remote Linux systems through SSH and is designed to work with the Linux Backup Manager engine and related virtualization tooling. The goal is to provide one control center for host management, backup jobs, restore operations, recovery points, snapshots, storage, scheduling, diagnostics and disaster-recovery operations.
 
-| Area | Status in 1.0.0 |
-|---|---|
-| ANSI TUI / CLI | Ready |
-| Credential profiles | Ready |
-| NFS / SMB / iSCSI targets | Ready |
-| Proxmox inventory | Ready |
-| Proxmox native `vzdump` orchestration | Ready, requires a PVE storage ID |
-| ESXi/vCenter inventory and OVF export | Ready when `govc` is installed |
-| Hyper-V inventory / `Export-VM` | Ready when Windows OpenSSH is configured |
-| systemd recurring backup jobs | Ready |
-| SMTP success/failure reports | Ready |
-| Cross-hypervisor migration preflight/planning | Ready |
-| Automatic PVE ↔ ESXi ↔ Hyper-V production cutover | **Safety-locked / not enabled in 1.0.0** |
+The application is being developed as a standalone Windows executable so that no separate .NET runtime installation is required on the management workstation.
 
-The migration lock is deliberate. Firmware, Secure Boot, TPM/vTPM, BitLocker, guest drivers, storage controllers, snapshots/checkpoints, VLANs and passthrough hardware can make a mechanically converted VM unbootable. Version 1.0.0 does not claim unattended cutover support that has not been validated against real source and destination hosts.
+---
 
-## Interface preview
+## Current Windows Build
+
+The latest build included in this repository is:
 
 ```text
-╔══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
-║ ◆ LINUX BACKUP MANAGER - VIRTUALIZATION & DISASTER RECOVERY CENTER                              2026-09-24 21:00:00 ║
-║   Backup • Restore • Convert • Migrate • Disaster Recovery                                                        ║
-╠══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
-║┌─ CONNECTED HYPERVISORS ──────────────────────────────────────────────────────────────────────────────────────────┐║
-║│  #   HOST             PLATFORM                 ADDRESS             VMs     STATE                                │║
-║│  1   PVE01            Proxmox VE 9.x           10.10.10.10          12      ● ONLINE                           │║
-║│  2   ESXI01           VMware ESXi 8            10.10.10.20           8      ● ONLINE                           │║
-║│  3   HV01             Microsoft Hyper-V 2025   10.10.10.30          10      ● ONLINE                           │║
-║└──────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘║
-║                                                                                                                      ║
-║┌─ MAIN MENU ──────────────────────────────────────────────────────────────────────────────────────────────────────┐║
-║│  ▶  Hypervisor Hosts                                                                                            │║
-║│     Virtual Machines                                                                                            │║
-║│     Backup VM                                                                                                   │║
-║│     Restore VM                                                                                                  │║
-║│     VM Migration                                                                                                │║
-║│     Disk Conversion                                                                                             │║
-║│     Network Mapping                                                                                             │║
-║│     Storage Mapping                                                                                             │║
-║│     Scheduled Jobs                                                                                              │║
-║│     Backup History                                                                                              │║
-║│     Email Reports                                                                                               │║
-║│     Credential Vault                                                                                            │║
-║│     Doctor / Diagnostics                                                                                        │║
-║└──────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘║
-╠══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
-║ ↑/↓ Navigate   ENTER Select   ESC Back   F1 Help   F5 Refresh                                          ● READY     ║
-║ Designed & Developed by antonios.mortos@outlook.com                                                               ║
-╚══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+LinuxBackupManager-v1.0.3-real-history.exe
 ```
 
-The renderer measures visible characters after removing ANSI escape codes, clips oversized fields, pads every row and then draws the right border. This is what keeps all right-hand vertical lines aligned.
+Version `1.0.3` includes a real host-backed backup history module. History is no longer a static or decorative UI element. When a Linux host and backup profile are selected, the application retrieves actual run history from the remote host over SSH.
 
-## Installation
-
-### Debian / Ubuntu
-
-```bash
-git clone https://github.com/antonismor/Linux-Backup-Manager---Virtualization-Disaster-Recovery-Center.git
-cd Linux-Backup-Manager---Virtualization-Disaster-Recovery-Center
-
-sudo apt update
-sudo apt install -y python3 nfs-common cifs-utils open-iscsi openssh-client qemu-utils
-
-sudo ./install.sh
-sudo lbm-vdrc
-```
-
-Or let the installer install the supported core dependencies on a recognized distribution:
-
-```bash
-sudo ./install.sh --install-deps
-```
-
-Check the installation:
-
-```bash
-lbm-vdrc --version
-sudo lbm-vdrc doctor
-```
-
-Expected version:
+The expected Linux Backup Manager history source is:
 
 ```text
-lbm-vdrc 1.0.0
+/var/lib/linux-backup-manager/history/<profile>.tsv
 ```
 
-For VMware ESXi/vCenter, install `govc` separately. Password-based Hyper-V SSH can use `sshpass`, although SSH public keys are strongly preferred.
+The Windows client can display the latest recorded backup executions including start time, end time, result, duration, transferred size, run ID and execution details.
 
-## Recommended first-run workflow
+---
 
-1. Open **Credential Vault** and create credential profiles.
-2. Open **Storage Mapping** and create NFS, SMB/CIFS, iSCSI or local targets.
-3. Open **Hypervisor Hosts** and add Proxmox, ESXi/vCenter or Hyper-V.
-4. Open **Virtual Machines** and verify inventory.
-5. Open **Backup VM** and select the source VM and backup destination.
-6. Use **Scheduled Jobs** to set the recurring schedule.
-7. Configure **Email Reports**.
-8. Run one manual backup and perform a recovery test before trusting automation.
+## Main Capabilities
 
-## Credentials
+### Host Management
 
-```bash
-sudo lbm-vdrc credential add pve-admin --type proxmox
-sudo lbm-vdrc credential add vmware-admin --type esxi
-sudo lbm-vdrc credential add hyperv-admin --type hyperv
-sudo lbm-vdrc credential add nas-smb --type smb
-sudo lbm-vdrc credential add san-chap --type iscsi
-sudo lbm-vdrc credential add smtp --type generic
-```
+The application provides a Windows GUI for defining and managing remote Linux hosts.
 
-List profile names without displaying the stored secret values:
+Supported connection information includes:
 
-```bash
-sudo lbm-vdrc credential list
-```
+- Display name
+- Hostname or IP address
+- SSH port
+- Username
+- Password authentication
+- SSH private-key authentication
+- Platform selection
+- Notes
+- Connection testing
+- Host status and basic platform detection
 
-## Hypervisors
+Saved credentials are protected for the current Windows user using Windows DPAPI.
 
-### Proxmox VE
+### SSH Connectivity
 
-```bash
-sudo lbm-vdrc hypervisor add PVE01 --type proxmox --host 10.10.10.10 --credential pve-admin
-sudo lbm-vdrc hypervisor test PVE01
-sudo lbm-vdrc hypervisor vms PVE01
-```
+Remote operations are performed through SSH.
 
-API tokens are preferred for unattended use.
+The application can use:
 
-### VMware ESXi / vCenter
+- Username and password
+- SSH private keys
+- Custom SSH ports
 
-After installing `govc`:
+For production environments, SSH key authentication is strongly recommended.
 
-```bash
-sudo lbm-vdrc hypervisor add ESXI01 --type esxi --host https://10.10.10.20/sdk --credential vmware-admin
-sudo lbm-vdrc hypervisor test ESXI01
-sudo lbm-vdrc hypervisor vms ESXI01
-```
+### Platform Detection
 
-### Microsoft Hyper-V
+The client can identify common Linux virtualization environments, including:
 
-LBM-VDRC uses PowerShell through Windows OpenSSH:
+- Standard Linux
+- Proxmox VE
+- KVM / libvirt
 
-```bash
-sudo lbm-vdrc hypervisor add HV01 --type hyperv --host 10.10.10.30 --credential hyperv-admin
-sudo lbm-vdrc hypervisor test HV01
-sudo lbm-vdrc hypervisor vms HV01
-```
+Additional platform integrations are planned as development continues.
 
-For unattended scheduled jobs, configure SSH public-key authentication.
+### Backup Operations
 
-## Storage targets
+The Windows console is intended to provide centralized access to Linux Backup Manager operations such as:
 
-### NFS
+- Run backup
+- Verify backup
+- Restore backup
+- Browse recovery points
+- Apply retention policies
+- View storage status
+- Configure schedules
+- Capture disaster-recovery inventory
+- Run diagnostics
+- View logs
 
-```bash
-sudo lbm-vdrc storage add backup-nfs --type nfs
-sudo lbm-vdrc storage test backup-nfs
-```
+The exact availability of each operation depends on the Linux host, installed utilities, privileges and the Linux Backup Manager engine installed on that host.
 
-### SMB / Samba / CIFS
+### Real Backup History
 
-Create the SMB credential first:
+Version `1.0.3` introduces a real backup-history viewer.
 
-```bash
-sudo lbm-vdrc credential add nas-smb --type smb
-sudo lbm-vdrc storage add backup-smb --type smb
-sudo lbm-vdrc storage test backup-smb
-```
+For the selected host and profile, the application retrieves the remote history file and presents it in a sortable table.
 
-### iSCSI
+Displayed information includes:
 
-Create an optional CHAP profile first, then:
+- Start date and time
+- End date and time
+- Backup status
+- Duration
+- Data size
+- Run ID
+- Detailed execution information
 
-```bash
-sudo lbm-vdrc credential add san-chap --type iscsi
-sudo lbm-vdrc storage add backup-san --type iscsi
-sudo lbm-vdrc storage test backup-san
-```
+The History window also supports:
 
-**LBM-VDRC never formats the LUN.** It expects an existing filesystem and prefers a filesystem UUID over a volatile `/dev/sdX` device name.
+- **Refresh from Host**
+- **Newest runs first**
+- **CSV export**
+- Detection of profiles with no recorded runs
 
-### Local path
+No fabricated history entries are generated.
 
-```bash
-sudo lbm-vdrc storage add local-backup --type local
-```
+### Recovery Points
 
-## Create and schedule a backup
+The project is designed to expose real recovery points generated by the Linux backup engine.
 
-```bash
-sudo lbm-vdrc job add-backup nightly-erp
-```
+Depending on the configured engine this may include:
 
-The wizard asks for the source hypervisor, VM name/ID, storage target, schedule and hypervisor-specific options.
+- rsync snapshot directories
+- compressed tar/zstd archives
+- restic snapshots
 
-A daily 02:00 timer uses:
+Recovery-point discovery and restore behavior depend on the active profile configuration on the remote Linux system.
+
+### Virtualization and Disaster Recovery
+
+The long-term objective of the project is to provide one Windows control center for:
+
+- Proxmox VE
+- KVM / libvirt
+- Linux virtualization hosts
+- VM and container backup orchestration
+- Snapshot workflows
+- Backup verification
+- VM restore
+- Replication
+- Migration
+- Disaster-recovery workflows
+- Storage mapping
+- Infrastructure inventory
+
+Some of these areas are already implemented in the underlying Linux project, while others are still being integrated and validated in the Windows client.
+
+---
+
+## Storage
+
+The architecture is intended to support backup targets commonly used in Linux and virtualization environments:
+
+- Local storage
+- NFS
+- SMB / CIFS / Samba
+- iSCSI
+- Dedicated backup repositories
+
+Storage support depends on the configuration and packages installed on the remote Linux host.
+
+---
+
+## Scheduling
+
+Linux-side scheduling can be managed through systemd timers.
+
+The underlying Linux Backup Manager supports recurring scheduled jobs, and the Windows console is being developed to provide a graphical administration layer for those schedules.
+
+Production scheduling should always be validated directly on the target host before being relied upon for disaster recovery.
+
+---
+
+## Security
+
+The project performs administrative operations on remote infrastructure and should therefore be treated as a privileged administration tool.
+
+Recommended security practices:
+
+- Prefer SSH keys instead of passwords.
+- Use dedicated administrative accounts.
+- Restrict SSH access with firewalls and network ACLs.
+- Use least privilege wherever practical.
+- Protect backup repositories from the same administrative failure domain as production workloads.
+- Test restores regularly.
+- Keep at least one independent or offline recovery copy for critical systems.
+
+Windows-stored passwords are protected with DPAPI for the current Windows user.
+
+---
+
+## Windows Requirements
+
+The current Windows application targets:
 
 ```text
-*-*-* 02:00:00
+Windows x64
+.NET 10
+WPF
 ```
 
-Run once manually:
+The distributed EXE is published as a **self-contained single-file application**, so a separate .NET runtime installation should not normally be required.
 
-```bash
-sudo lbm-vdrc job run nightly-erp
-```
+---
 
-Inspect timers:
+## Linux Host Requirements
 
-```bash
-systemctl list-timers 'lbm-vdrc-job-*' --all
-```
+Requirements depend on the operations being used, but typical hosts may require:
 
-Inspect a job log:
+- OpenSSH server
+- Bash
+- rsync
+- tar
+- zstd
+- restic
+- systemd
+- findmnt
+- iproute2
+- NFS / CIFS / iSCSI utilities where applicable
+- Proxmox or libvirt tooling for virtualization-specific functions
 
-```bash
-journalctl -u lbm-vdrc-job-nightly-erp.service
-```
+The remote account must have sufficient privileges for the requested operation.
 
-Change or enable a schedule:
+---
 
-```bash
-sudo lbm-vdrc job enable nightly-erp --schedule '*-*-* 03:30:00'
-```
+## Typical Workflow
 
-Disable it:
+A normal administrative workflow is:
 
-```bash
-sudo lbm-vdrc job disable nightly-erp
-```
+1. Start `LinuxBackupManager.exe`.
+2. Add a Linux or virtualization host.
+3. Configure SSH authentication.
+4. Test the connection.
+5. Select the host.
+6. Open the operations console.
+7. Load available backup profiles.
+8. Run, verify or inspect backup jobs.
+9. Open **History** to retrieve the real backup run history from the Linux host.
+10. Review recovery points.
+11. Perform controlled restore testing.
+12. Validate scheduling and retention.
 
-LBM-VDRC uses one-shot systemd services rather than leaving a Python process sleeping permanently. Timers use `Persistent=true` and `RandomizedDelaySec=120`.
+Always perform restore testing before considering a backup strategy operational.
 
-## Hypervisor-specific backup behavior
+---
 
-**Proxmox:** the job calls native `vzdump`. The destination must exist as a Proxmox storage ID visible to the node. If the physical destination is NFS/CIFS/iSCSI, configure it in Proxmox and provide that PVE storage ID to the job.
+## Version 1.0.3 Changes
 
-**VMware:** the connector uses `govc export.ovf` and writes the export to the selected mounted LBM-VDRC storage target.
+Version `1.0.3` currently includes:
 
-**Hyper-V:** the connector requests `Export-VM` on the Windows host and transfers the export to the selected storage target over SCP.
+- .NET 10 Windows x64 application
+- Self-contained single EXE publishing
+- Custom application/shortcut icon
+- Light silver / ivory interface
+- Dark readable typography
+- Black text inside input fields
+- SSH host management
+- Password and private-key authentication
+- Windows DPAPI credential protection
+- Linux platform detection
+- Proxmox VE detection
+- KVM/libvirt detection
+- Linux Backup Manager remote operations
+- Real host-backed backup History viewer
+- History refresh
+- History CSV export
+- Run ID and backup-size reporting
+- Clickable developer email link
 
-## Email reports
+---
 
-```bash
-sudo lbm-vdrc credential add smtp --type generic
-sudo lbm-vdrc email configure
-```
+## Work in Progress
 
-When enabled, the job engine sends SUCCESS or FAILED reports with the job name, type, duration and result/error.
+**This project is still under active development.**
 
-## Migration jobs
+The current build should be considered a development / preview release rather than a final production release.
 
-```bash
-sudo lbm-vdrc job add-migration ERP01-PVE-to-ESXI
-sudo lbm-vdrc job run ERP01-PVE-to-ESXI
-```
+Areas still being expanded, hardened or validated include:
 
-In 1.0.0, migration jobs create a safe plan/preflight result. A scheduled migration repeats that safe planning stage; it does **not** silently shut down or delete the source VM or perform an unvalidated automatic cutover.
+- Extended Proxmox VE management
+- Advanced KVM/libvirt operations
+- Full VM/container inventory views
+- Snapshot lifecycle management
+- Replication workflows
+- Cross-host migration
+- Cross-hypervisor conversion
+- Automated disaster-recovery orchestration
+- Storage discovery and mapping
+- Job scheduler management
+- Detailed live progress reporting
+- Centralized logs and event monitoring
+- Additional validation and rollback controls
+- Installer and automated update system
+- Broader testing against multiple Linux distributions and virtualization platforms
 
-## Important paths
+Do not rely on an untested workflow for production disaster recovery. Every backup, restore and migration design should be validated in the target environment.
 
-```text
-/etc/lbm-vdrc/             configuration and root-only secrets
-/var/lib/lbm-vdrc/         history and persistent state
-/var/log/lbm-vdrc/         application log
-/run/lbm-vdrc/             short-lived runtime data
-/mnt/lbm-vdrc/             managed storage mounts
-/opt/lbm-vdrc/             installed Python package
-/usr/local/bin/lbm-vdrc    executable wrapper
-```
+---
 
-## Documentation
+## Development Philosophy
 
-- [Quick Start](docs/QUICKSTART.md)
-- [Complete Administrator Manual](docs/MANUAL.md)
-- [Hypervisor Setup](docs/HYPERVISORS.md)
-- [Storage Guide](docs/STORAGE.md)
-- [Scheduling & Services](docs/SCHEDULING.md)
-- [Email Reporting](docs/EMAIL.md)
-- [Migration Design & Safety](docs/MIGRATION.md)
-- [CLI Reference](docs/CLI_REFERENCE.md)
-- [Troubleshooting](docs/TROUBLESHOOTING.md)
-- [Architecture](docs/ARCHITECTURE.md)
-- [Security Policy](SECURITY.md)
-- [Changelog](CHANGELOG.md)
+The project is being built around several principles:
 
-## Testing
+- Real operations instead of decorative UI
+- No fabricated backup status or history
+- Clear distinction between tested and experimental features
+- Safe handling of destructive actions
+- Restore validation as part of backup design
+- Centralized Windows administration with Linux-side execution
+- Transparent logs and recoverability
+- Incremental validation against real infrastructure
 
-```bash
-python3 -m compileall -q lbm_vdrc
-PYTHONPATH=. python3 -m unittest discover -s tests -v
-bash -n install.sh
-bash -n uninstall.sh
-```
+---
 
-## Uninstall
+## Project Structure
 
-```bash
-sudo ./uninstall.sh
-```
+The project combines two areas:
 
-Program files and LBM-VDRC timers are removed. Configuration, credentials, history, logs and backup data are deliberately preserved.
+### Linux Backup Engine
 
-## Security baseline
+The Linux-side components perform the actual backup, verification, retention, recovery-point and scheduling operations.
 
-LBM-VDRC is an administrative tool and normally runs as root. Use dedicated accounts/tokens where possible, keep TLS validation enabled, prefer API tokens and SSH keys, restrict controller access, and keep at least one recovery copy outside the virtualization hosts' administrative blast radius.
+### Windows Management Console
+
+The .NET 10 Windows application provides the graphical administration layer and connects to Linux hosts using SSH.
+
+This separation allows the Linux backup engine to remain close to the workloads while the administrator works from a Windows workstation.
+
+---
+
+## Disclaimer
+
+This software is under active development and is provided for testing, laboratory use and controlled deployment.
+
+Backup and disaster-recovery software can affect critical production data. Always maintain independent backups, verify recovery points and test restoration procedures before using any automation in a production environment.
+
+The author is not responsible for data loss, service interruption or configuration damage resulting from untested deployment or misuse.
+
+---
 
 ## Author
 
-**Antonios Mortos**  
-**Designed & Developed by antonios.mortos@outlook.com**
+**Antonios Mortos**
+
+Designed and Development by:  
+**[antonios.mortos@outlook.com](mailto:antonios.mortos@outlook.com)**
+
+---
+
+## Project Status
+
+```text
+Version: 1.0.3
+Status : UNDER ACTIVE DEVELOPMENT
+Stage  : WORK IN PROGRESS / DEVELOPMENT PREVIEW
+```
+
+More functionality, validation and documentation will be added as development continues.
