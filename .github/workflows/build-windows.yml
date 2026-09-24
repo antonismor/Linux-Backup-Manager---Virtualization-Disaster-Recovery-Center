@@ -82,6 +82,10 @@ jobs:
             $x = Get-Content $_.FullName -Raw
             foreach ($kv in $replacements.GetEnumerator()) { $x = $x.Replace($kv.Key, $kv.Value) }
             $x = $x.Replace('Foreground="White"', 'Foreground="#111111"')
+            $x = $x.Replace('<Setter Property="Foreground" Value="White"/>', '<Setter Property="Foreground" Value="#111111"/>')
+            $x = $x.Replace('<Setter Property="Foreground" Value="#E8F3FF"/>', '<Setter Property="Foreground" Value="#111111"/>')
+            $x = $x.Replace('<Setter Property="Foreground" Value="#CFE3FA"/>', '<Setter Property="Foreground" Value="#111111"/>')
+            $x = $x.Replace('<Setter Property="CaretBrush" Value="White"/>', '<Setter Property="CaretBrush" Value="#111111"/>')
             Set-Content $_.FullName $x -Encoding UTF8
           }
 
@@ -108,7 +112,7 @@ jobs:
       - name: Upload Windows package
         uses: actions/upload-artifact@v4
         with:
-          name: LinuxBackupManager-win-x64-v1.0.1-light
+          name: LinuxBackupManager-win-x64-v1.0.2-light-black-input
           path: Dist/*
           if-no-files-found: error
           compression-level: 9
@@ -122,7 +126,7 @@ jobs:
           run_attempt=${{ github.run_attempt }}
           commit=${{ github.sha }}
           job_status=${{ job.status }}
-          artifact=LinuxBackupManager-win-x64-v1.0.1-light
+          artifact=LinuxBackupManager-win-x64-v1.0.2-light-black-input
           "@ | Set-Content build-status.txt
 
           @"
@@ -130,7 +134,7 @@ jobs:
           - **Run:** ${{ github.run_id }} (attempt ${{ github.run_attempt }})
           - **Commit:** `${{ github.sha }}`
           - **Job status:** ${{ job.status }}
-          - **Artifact:** `LinuxBackupManager-win-x64-v1.0.1-light`
+          - **Artifact:** `LinuxBackupManager-win-x64-v1.0.2-light-black-input`
           "@ | Add-Content $env:GITHUB_STEP_SUMMARY
 
       - name: Upload build status
