@@ -1,0 +1,5 @@
+run_id=36044029127
+run_attempt=1
+commit=ac2e29926460aeeb94bc1ab41bd864a57b968b91
+job_status=failure
+artifact=LinuxBackupManager-win-x64-v1.0.0
