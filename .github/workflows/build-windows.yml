@@ -257,7 +257,7 @@ jobs:
 
               private async void Refresh_Click(object sender, RoutedEventArgs e) => await RefreshHistoryAsync();
 
-              private static string Csv(string value) => """ + (value ?? "").Replace(""", """") + """;
+              private static string Csv(string value) => ((char)34) + (value ?? "").Replace(((char)34).ToString(), new string((char)34, 2)) + ((char)34);
 
               private void ExportCsv_Click(object sender, RoutedEventArgs e)
               {
