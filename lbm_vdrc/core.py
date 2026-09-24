@@ -39,8 +39,7 @@ def save_json(path: Path, data: Any, mode: int=0o600):
     fd, tmp = tempfile.mkstemp(prefix=path.name+".", dir=str(path.parent))
     try:
         with os.fdopen(fd,"w",encoding="utf-8") as f:
-            json.dump(data,f,indent=2,ensure_ascii=False); f.write("
-")
+            json.dump(data,f,indent=2,ensure_ascii=False); f.write("\n")
         os.chmod(tmp, mode); os.replace(tmp,path)
     finally:
         if os.path.exists(tmp): os.unlink(tmp)
@@ -54,8 +53,7 @@ def run(cmd, *, check=True, capture=True, env=None, input_text=None, timeout=Non
     if isinstance(cmd,str): cmd=shlex.split(cmd)
     cp=subprocess.run(cmd,text=True,capture_output=capture,env=env,input=input_text,timeout=timeout)
     if check and cp.returncode!=0:
-        raise RuntimeError(f"Command failed ({cp.returncode}): {' '.join(cmd)}
-{(cp.stderr or cp.stdout or '').strip()}")
+        raise RuntimeError(f"Command failed ({cp.returncode}): {' '.join(cmd)}\\n{(cp.stderr or cp.stdout or '').strip()}")
     return cp
 
 def now_iso():
@@ -64,8 +62,7 @@ def now_iso():
 
 def history(event):
     ensure_dirs(); event={"time":now_iso(),**event}
-    with PATHS["history"].open("a",encoding="utf-8") as f: f.write(json.dumps(event,ensure_ascii=False)+"
-")
+    with PATHS["history"].open("a",encoding="utf-8") as f: f.write(json.dumps(event,ensure_ascii=False)+"\n")
 
 def safe_name(value):
     value=re.sub(r"[^A-Za-z0-9._-]+","-",value.strip())
