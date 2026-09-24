@@ -1,0 +1,1 @@
+Force black foreground and caret for WPF TextBox and PasswordBox input fields. v1.0.2
