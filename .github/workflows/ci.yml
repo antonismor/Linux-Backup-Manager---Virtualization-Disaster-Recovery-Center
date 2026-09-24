@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Compile Python
+        run: python3 -m compileall -q lbm_vdrc
+
+      - name: Run unit tests
+        run: PYTHONPATH=. python3 -m unittest discover -s tests -v
+
+      - name: Check shell syntax
+        run: |
+          bash -n install.sh
+          bash -n uninstall.sh
+
+      - name: CLI smoke test
+        run: PYTHONPATH=. python3 -m lbm_vdrc.cli --version
