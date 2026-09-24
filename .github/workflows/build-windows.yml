@@ -39,6 +39,18 @@ jobs:
           New-Item -ItemType Directory -Force -Path src | Out-Null
           Expand-Archive 'source.zip' -DestinationPath src -Force
 
+      - name: Apply build fixes
+        shell: pwsh
+        run: |
+          $ssh = Get-Content 'src/Services/SshHostService.cs' -Raw
+          $ssh = $ssh.Replace('int status = command.ExitStatus;', 'int status = command.ExitStatus ?? -1;')
+          Set-Content 'src/Services/SshHostService.cs' $ssh -Encoding UTF8
+          $store = Get-Content 'src/Services/HostStore.cs' -Raw
+          if (-not $store.StartsWith('using System.IO;')) {
+            $store = "using System.IO;`r`n" + $store
+          }
+          Set-Content 'src/Services/HostStore.cs' $store -Encoding UTF8
+
       - name: Restore
         shell: pwsh
         run: dotnet restore src/LinuxBackupManager.csproj
