@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -66,3 +66,20 @@ jobs:
           path: Dist/*
           if-no-files-found: error
           compression-level: 9
+
+      - name: Publish build status
+        if: always()
+        shell: pwsh
+        run: |
+          @"
+          run_id=${{ github.run_id }}
+          run_attempt=${{ github.run_attempt }}
+          commit=${{ github.sha }}
+          job_status=${{ job.status }}
+          artifact=LinuxBackupManager-win-x64-v1.0.0
+          "@ | Set-Content build-status.txt
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add build-status.txt
+          git commit -m "Update Windows build status [skip ci]" || exit 0
+          git push
