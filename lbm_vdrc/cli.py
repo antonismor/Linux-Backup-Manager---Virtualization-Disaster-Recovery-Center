@@ -236,7 +236,7 @@ def parser():
     s=sub.add_parser("email");ss=s.add_subparsers(dest="action");ss.add_parser("configure");sub.add_parser("doctor");sub.add_parser("tui");return p
 
 def main(argv=None):
-    ensure_dirs();p=parser();a=p.parse_args(argv)
+    p=parser();a=p.parse_args(argv);ensure_dirs()
     if not a.cmd or a.cmd=="tui":return tui()
     if a.cmd=="credential":
         if a.action=="add":return credential_add(a)
