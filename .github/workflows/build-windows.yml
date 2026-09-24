@@ -1,0 +1,68 @@
+name: Build Windows EXE
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'build-source/**'
+      - '.github/workflows/build-windows.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Reconstruct source package
+        shell: pwsh
+        run: |
+          $parts = Get-ChildItem 'build-source/part*.txt' | Sort-Object Name
+          if ($parts.Count -ne 7) { throw "Expected 7 source parts, found $($parts.Count)." }
+          $b64 = ($parts | ForEach-Object { (Get-Content $_.FullName -Raw).Trim() }) -join ''
+          [IO.File]::WriteAllBytes('source.zip', [Convert]::FromBase64String($b64))
+          $hash = (Get-FileHash 'source.zip' -Algorithm SHA256).Hash.ToLowerInvariant()
+          Write-Host "source.zip SHA256=$hash"
+          if ($hash -ne '36a8ef556e1ec45c732c46f138ef378c46efa59e4e3308a6b5891a64b40eecc5') {
+            throw "Source package SHA256 mismatch."
+          }
+          New-Item -ItemType Directory -Force -Path src | Out-Null
+          Expand-Archive 'source.zip' -DestinationPath src -Force
+
+      - name: Restore
+        shell: pwsh
+        run: dotnet restore src/LinuxBackupManager.csproj
+
+      - name: Build
+        shell: pwsh
+        run: dotnet build src/LinuxBackupManager.csproj -c Release -r win-x64 --self-contained true --no-restore
+
+      - name: Publish self-contained single EXE
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path Dist | Out-Null
+          dotnet publish src/LinuxBackupManager.csproj -c Release -r win-x64 --self-contained true --no-restore -o Dist /p:PublishSingleFile=true /p:PublishTrimmed=false /p:IncludeNativeLibrariesForSelfExtract=true /p:EnableCompressionInSingleFile=true
+          Copy-Item src/create-shortcut.ps1 Dist/create-shortcut.ps1
+          Copy-Item src/Create-Desktop-Shortcut.cmd Dist/Create-Desktop-Shortcut.cmd
+          Copy-Item src/README.md Dist/README.md
+          $hash = Get-FileHash Dist/LinuxBackupManager.exe -Algorithm SHA256
+          "LinuxBackupManager.exe  $($hash.Hash.ToLowerInvariant())" | Set-Content Dist/SHA256.txt
+          Get-ChildItem Dist | Format-Table Name,Length
+
+      - name: Upload Windows package
+        uses: actions/upload-artifact@v4
+        with:
+          name: LinuxBackupManager-win-x64-v1.0.0
+          path: Dist/*
+          if-no-files-found: error
+          compression-level: 9
