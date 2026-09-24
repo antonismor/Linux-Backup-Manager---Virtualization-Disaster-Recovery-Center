@@ -1,0 +1,17 @@
+__pycache__/
+*.py[cod]
+*.log
+*.tmp
+*.swp
+*~
+.DS_Store
+.vscode/
+.idea/
+.pytest_cache/
+.coverage
+htmlcov/
+build/
+dist/
+*.egg-info/
+.env
+secrets.json
