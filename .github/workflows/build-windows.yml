@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -397,6 +397,12 @@ jobs:
           - **Job status:** ${{ job.status }}
           - **Artifact:** `LinuxBackupManager-win-x64-v1.0.3-real-history`
           "@ | Add-Content $env:GITHUB_STEP_SUMMARY
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add build-status.txt
+          git commit -m "Update Windows build status [skip ci]" || exit 0
+          git push
 
       - name: Upload build status
         if: always()
