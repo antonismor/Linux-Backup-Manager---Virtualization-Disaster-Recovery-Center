@@ -1,5 +1,5 @@
-run_id=36048536578
+run_id=36048704465
 run_attempt=1
-commit=c3992e1956d283019d7b806fe40a258a6cfedb65
-job_status=failure
+commit=07aa1642096a9209a5c384617470b998e8f8add2
+job_status=success
 artifact=LinuxBackupManager-win-x64-v1.0.3-real-history
