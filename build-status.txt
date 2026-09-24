@@ -1,5 +1,5 @@
-run_id=36044609088
+run_id=36046521730
 run_attempt=1
-commit=6d5fe21c21e94ba867242258d07dff31279eb9a8
+commit=a7d8a408d67d963ab19b587af32b33d40cacb76f
 job_status=success
-artifact=LinuxBackupManager-win-x64-v1.0.0
+artifact=LinuxBackupManager-win-x64-v1.0.1-light
