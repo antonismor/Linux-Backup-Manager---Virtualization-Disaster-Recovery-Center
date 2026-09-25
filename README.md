@@ -140,6 +140,17 @@ Depending on the configured engine this may include:
 
 Recovery-point discovery and restore behavior depend on the active profile configuration on the remote Linux system.
 
+
+### Proxmox → Proxmox Cold Copy Wizard (Lab Feature)
+
+The feature branch `feature/proxmox-cold-copy-wizard` adds a real interactive ANSI/color workflow for copying a **powered-off QEMU VM between two independent Proxmox VE hosts**.
+
+The operator supplies only source/destination IP or hostname, SSH username/password, and selects the source VM from live inventory. Destination VMID selection is automatic; destination storage is auto-selected when there is only one valid image storage, otherwise it is chosen from a menu.
+
+The workflow performs `vzdump`, controller-side staging, SHA256 verification on every transfer leg, destination `qmrestore`, forces `onboot=0`, and leaves the restored VM powered off for administrator validation. The source VM is never deleted.
+
+See [docs/PROXMOX_COLD_COPY.md](docs/PROXMOX_COLD_COPY.md).
+
 ### Virtualization and Disaster Recovery
 
 The long-term objective of the project is to provide one Windows control center for:
