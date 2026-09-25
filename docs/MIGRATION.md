@@ -88,3 +88,33 @@ A migration job may be assigned a systemd schedule, but version 1.0.0 repeats on
 Do not enable automated source→target cutover for a hypervisor pair until that exact adapter has been validated on representative non-production VMs, including both Linux and Windows guests if both are in scope.
 
 Designed & Developed by **antonios.mortos@outlook.com**
+
+
+## Independent Proxmox → Proxmox cold copy
+
+A lab-validated implementation is being introduced separately from cross-hypervisor conversion.
+
+Run the ANSI/TUI workflow with:
+
+```bash
+sudo lbm-vdrc
+```
+
+then select:
+
+```text
+VM Migration
+  └─ Proxmox → Proxmox Cold Copy (Independent Hosts)
+```
+
+or start the same interactive wizard directly:
+
+```bash
+sudo lbm-vdrc pve-copy
+```
+
+No migration parameters are required on the command line. The wizard reads both Proxmox hosts live over SSH, lists the source QEMU VMs, discovers destination storage and guest IDs, and performs a cold `vzdump → transfer → qmrestore` workflow with SHA256 validation.
+
+The source VM must already be powered off. The destination copy remains powered off and is forced to `onboot=0` until administrator validation.
+
+See [PROXMOX_COLD_COPY.md](PROXMOX_COLD_COPY.md).
