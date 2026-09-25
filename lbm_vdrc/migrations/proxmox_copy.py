@@ -11,6 +11,9 @@ from pathlib import Path
 
 from ..core import STATE, command_exists, history, now_iso, run, safe_name
 
+HOST_RE = re.compile(r"^[A-Za-z0-9._-]+$")
+USER_RE = re.compile(r"^[A-Za-z0-9._-]+$")
+
 SSH_OPTIONS = [
     "-o", "BatchMode=no",
     "-o", "StrictHostKeyChecking=accept-new",
@@ -18,6 +21,13 @@ SSH_OPTIONS = [
     "-o", "ServerAliveInterval=15",
     "-o", "ServerAliveCountMax=3",
 ]
+
+
+def _validate_endpoint(host: str, username: str):
+    if not HOST_RE.fullmatch(host or ""):
+        raise ValueError("Host must be an IPv4 address or DNS hostname using letters, digits, dots, dashes or underscores.")
+    if not USER_RE.fullmatch(username or ""):
+        raise ValueError("SSH username contains unsupported characters.")
 
 
 def _require_tools():
@@ -39,12 +49,14 @@ def _env(password: str):
 def _ssh(host: str, username: str, password: str, remote_command: str, *,
          capture: bool = True, check: bool = True, timeout: int | None = None):
     _require_tools()
+    _validate_endpoint(host, username)
     cmd = ["sshpass", "-e", "ssh", *SSH_OPTIONS, f"{username}@{host}", remote_command]
     return run(cmd, env=_env(password), capture=capture, check=check, timeout=timeout)
 
 
 def _scp_pull(host: str, username: str, password: str, remote_path: str, local_path: Path):
     _require_tools()
+    _validate_endpoint(host, username)
     cmd = [
         "sshpass", "-e", "scp", "-p", *SSH_OPTIONS,
         f"{username}@{host}:{remote_path}", str(local_path),
@@ -54,6 +66,7 @@ def _scp_pull(host: str, username: str, password: str, remote_path: str, local_p
 
 def _scp_push(host: str, username: str, password: str, local_path: Path, remote_path: str):
     _require_tools()
+    _validate_endpoint(host, username)
     cmd = [
         "sshpass", "-e", "scp", "-p", *SSH_OPTIONS,
         str(local_path), f"{username}@{host}:{remote_path}",
@@ -116,11 +129,17 @@ def list_qemu_vms(host: str, username: str, password: str):
 
 
 def _parse_storages(config_rows, status_rows):
-    status = {str(x.get("storage")): x for x in (status_rows or [])}
+    status = {
+        str(x.get("storage") or x.get("name")): x
+        for x in (status_rows or [])
+        if (x.get("storage") or x.get("name"))
+    }
     out = []
     for row in config_rows or []:
         name = str(row.get("storage", "")).strip()
         if not name:
+            continue
+        if int(row.get("disable", 0) or 0) == 1:
             continue
         content = row.get("content", "")
         if isinstance(content, list):
@@ -214,7 +233,7 @@ def _bridges_from_config(config_text: str):
 def _destination_bridges(host: str, username: str, password: str):
     cp = _ssh(
         host, username, password,
-        r"ip -o link show | awk -F': ' '{print $2}' | cut -d@ -f1 | grep -E '^(vmbr|ovs)' || true",
+        r"ip -o link show | awk -F': ' '{print $2}' | cut -d@ -f1",
         timeout=20,
     )
     return sorted({x.strip() for x in cp.stdout.splitlines() if x.strip()})
@@ -223,6 +242,23 @@ def _destination_bridges(host: str, username: str, password: str):
 def _emit(progress, step: int, total: int, title: str, detail: str = ""):
     if progress:
         progress(step, total, title, detail)
+
+
+def _hardware_warnings(config_text: str):
+    warnings = []
+    checks = [
+        ("hostpci", "PCI/GPU passthrough is configured; verify equivalent hardware on the destination."),
+        ("usb", "USB passthrough is configured; verify the device mapping on the destination."),
+        ("tpmstate", "vTPM is configured; verify TPM/BitLocker requirements before first boot."),
+        ("efidisk", "EFI disk is configured; verify UEFI/EFI storage after restore."),
+        ("hookscript", "A Proxmox hookscript is referenced; verify the script exists on the destination."),
+        ("args:", "Custom QEMU arguments are configured; validate them on the destination."),
+    ]
+    lower = config_text.lower()
+    for token, message in checks:
+        if token in lower:
+            warnings.append(message)
+    return warnings
 
 
 def cold_copy_vm(*, source: dict, destination: dict, vm: dict, target_storage: str,
@@ -257,6 +293,9 @@ def cold_copy_vm(*, source: dict, destination: dict, vm: dict, target_storage: s
             "This wizard only copies a VM that is already powered off."
         )
 
+    if source_host == destination_host:
+        raise RuntimeError("Source and destination must be different Proxmox hosts.")
+
     if target_vmid is None:
         target_vmid = choose_target_vmid(
             destination_host, destination_user, destination_password, vmid
@@ -279,6 +318,7 @@ def cold_copy_vm(*, source: dict, destination: dict, vm: dict, target_storage: s
         source_host, source_user, source_password, f"qm config {vmid}", timeout=30
     ).stdout
     source_bridges = _bridges_from_config(src_cfg)
+    hardware_warnings = _hardware_warnings(src_cfg)
 
     run_id = time.strftime("%Y%m%d-%H%M%S")
     receipt_dir = STATE / "migrations" / safe_name(f"{vm_name}-{vmid}-to-{destination_host}-{run_id}")
@@ -377,6 +417,10 @@ def cold_copy_vm(*, source: dict, destination: dict, vm: dict, target_storage: s
         ) from exc
 
     _emit(progress, 9, total_steps, "Safety validation", "Destination must remain OFF")
+    _ssh(
+        destination_host, destination_user, destination_password,
+        f"qm set {target_vmid} --onboot 0", timeout=30,
+    )
     restored_status = _vm_status(
         destination_host, destination_user, destination_password, target_vmid
     )
@@ -426,6 +470,8 @@ def cold_copy_vm(*, source: dict, destination: dict, vm: dict, target_storage: s
         "source_bridges": source_bridges,
         "destination_bridges": destination_bridges,
         "missing_bridges": missing_bridges,
+        "hardware_warnings": hardware_warnings,
+        "onboot_forced_off": True,
         "source_preserved": True,
         "destination_autostarted": False,
     }
@@ -446,6 +492,7 @@ def cold_copy_vm(*, source: dict, destination: dict, vm: dict, target_storage: s
         "storage": target_storage,
         "sha256": source_sha,
         "missing_bridges": missing_bridges,
+        "hardware_warnings": hardware_warnings,
     })
 
     _emit(progress, 10, total_steps, "Completed", f"Destination VM {target_vmid} is {restored_status.upper()}")
