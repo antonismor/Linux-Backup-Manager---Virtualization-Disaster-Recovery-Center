@@ -26,6 +26,9 @@ jobs:
         run: |
           bash -n install.sh
           bash -n uninstall.sh
+          bash -n build-binary.sh
 
       - name: CLI smoke test
-        run: PYTHONPATH=. python3 -m lbm_vdrc.cli --version
+        run: |
+          PYTHONPATH=. python3 -m lbm_vdrc.cli --version
+          PYTHONPATH=. python3 vmmigration.py --version
