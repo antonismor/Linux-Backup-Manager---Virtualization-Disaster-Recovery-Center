@@ -24,9 +24,9 @@ SSH_OPTIONS = [
 
 
 def _validate_endpoint(host: str, username: str):
-    if not HOST_RE.fullmatch(host or ""):
+    if not HOST_RE.fullmatch(host or "") or str(host).startswith("-"):
         raise ValueError("Host must be an IPv4 address or DNS hostname using letters, digits, dots, dashes or underscores.")
-    if not USER_RE.fullmatch(username or ""):
+    if not USER_RE.fullmatch(username or "") or str(username).startswith("-"):
         raise ValueError("SSH username contains unsupported characters.")
 
 
