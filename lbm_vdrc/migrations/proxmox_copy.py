@@ -150,9 +150,16 @@ def list_image_storages(host: str, username: str, password: str):
     return _parse_storages(config_rows, status_rows)
 
 
+def _all_guest_ids(host: str, username: str, password: str):
+    data = _json_remote(
+        host, username, password,
+        "pvesh get /cluster/resources --type vm --output-format json",
+    )
+    return {int(x["vmid"]) for x in (data or []) if x.get("vmid") is not None}
+
+
 def choose_target_vmid(host: str, username: str, password: str, preferred_vmid: int):
-    vms = list_qemu_vms(host, username, password)
-    used = {int(v["vmid"]) for v in vms}
+    used = _all_guest_ids(host, username, password)
     if int(preferred_vmid) not in used:
         return int(preferred_vmid)
     cp = _ssh(host, username, password, "pvesh get /cluster/nextid", timeout=20)
@@ -197,8 +204,7 @@ def _vm_status(host: str, username: str, password: str, vmid: int):
 
 
 def _vm_exists(host: str, username: str, password: str, vmid: int):
-    cp = _ssh(host, username, password, f"qm status {int(vmid)}", timeout=20, check=False)
-    return cp.returncode == 0
+    return int(vmid) in _all_guest_ids(host, username, password)
 
 
 def _bridges_from_config(config_text: str):
@@ -208,7 +214,7 @@ def _bridges_from_config(config_text: str):
 def _destination_bridges(host: str, username: str, password: str):
     cp = _ssh(
         host, username, password,
-        r"ip -o link show type bridge | awk -F': ' '{print $2}' | cut -d@ -f1",
+        r"ip -o link show | awk -F': ' '{print $2}' | cut -d@ -f1 | grep -E '^(vmbr|ovs)' || true",
         timeout=20,
     )
     return sorted({x.strip() for x in cp.stdout.splitlines() if x.strip()})
