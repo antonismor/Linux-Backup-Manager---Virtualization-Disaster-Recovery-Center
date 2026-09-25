@@ -10,6 +10,13 @@ from .hypervisors import configs as hv_configs,get as get_hv
 from .jobs import all_jobs,save_job,run_job
 from .scheduler import install_job_timer,remove_job_timer
 from .doctor import report as doctor_report
+from .migrations import (
+    test_proxmox_host,
+    list_qemu_vms,
+    list_image_storages,
+    choose_target_vmid,
+    cold_copy_vm,
+)
 
 def fmt_bytes(n):
     try:n=float(n)
@@ -153,7 +160,168 @@ def tui_backup_wizard():
     job_add_backup(SimpleNamespace(name=None))
     input("Press ENTER to return to the dashboard...")
 
+def _migration_progress(step, total, title, detail=""):
+    bar_width=28
+    filled=max(1,min(bar_width,int((step/total)*bar_width)))
+    bar="█"*filled+"░"*(bar_width-filled)
+    suffix=f"  {DIM}{detail}{RESET}" if detail else ""
+    print(f"{CYAN}[{step:02d}/{total:02d}]{RESET} {GREEN}{bar}{RESET} {BOLD}{title}{RESET}{suffix}",flush=True)
+
+def tui_pve_copy_wizard():
+    require_root()
+    if not command_exists("sshpass"):
+        return show_text("PROXMOX → PROXMOX COLD COPY",[
+            "sshpass is required for the password-only wizard.",
+            "Debian/Ubuntu: sudo apt install -y openssh-client sshpass",
+            "",
+            "No configuration was changed."
+        ])
+
+    s=Screen();s.clear();s.header("Independent Proxmox hosts • Cold copy • Source preserved")
+    s.section("SOURCE PROXMOX")
+    s.section_row("Enter the source host details. Credentials are kept in memory only.")
+    s.section_end();s.footer("● WAITING FOR SOURCE")
+    print()
+    src_host=prompt("Source Proxmox IP / hostname","")
+    src_user=prompt("Source username","root")
+    src_password=getpass.getpass("Source password: ")
+    if not src_host or not src_user or not src_password:
+        return show_text("CANCELLED",["Source host, username and password are required."])
+
+    print(CYAN+"Connecting to source..."+RESET)
+    src_info=test_proxmox_host(src_host,src_user,src_password)
+    vms=list_qemu_vms(src_host,src_user,src_password)
+    if not vms:
+        return show_text("SOURCE INVENTORY",["No QEMU virtual machines were found on the source host."])
+
+    vm_labels=[]
+    for v in vms:
+        state=str(v.get("status","unknown")).upper()
+        vm_labels.append(
+            f"{v['vmid']:>5}  {v['name']:<34}  {state:<9}  "
+            f"CPU {v.get('cpu',0):>2}  RAM {fmt_bytes(v.get('memory',0)):>10}  "
+            f"DISK {fmt_bytes(v.get('disk',0)):>10}"
+        )
+    idx=menu(
+        vm_labels+["Back"],
+        title="SELECT SOURCE VM",
+        subtitle=f"{src_info['hostname']} • {src_info['version']}"
+    )
+    if idx is None or idx>=len(vms):return
+    vm=vms[idx]
+    if str(vm.get("status","")).lower()!="stopped":
+        return show_text("SAFETY STOP",[
+            f"VM {vm['vmid']} - {vm['name']} is {str(vm.get('status')).upper()}.",
+            "",
+            "This migration mode copies only a VM that is already powered off.",
+            "The program did not shut down or modify the source VM."
+        ])
+
+    s=Screen();s.clear();s.header("Independent Proxmox hosts • Cold copy • Source preserved")
+    s.section("DESTINATION PROXMOX")
+    s.section_row("Enter the destination host details. Credentials are kept in memory only.")
+    s.section_end();s.footer("● WAITING FOR DESTINATION")
+    print()
+    dst_host=prompt("Destination Proxmox IP / hostname","")
+    dst_user=prompt("Destination username","root")
+    dst_password=getpass.getpass("Destination password: ")
+    if not dst_host or not dst_user or not dst_password:
+        return show_text("CANCELLED",["Destination host, username and password are required."])
+
+    print(CYAN+"Connecting to destination..."+RESET)
+    dst_info=test_proxmox_host(dst_host,dst_user,dst_password)
+    storages=list_image_storages(dst_host,dst_user,dst_password)
+    if not storages:
+        return show_text("DESTINATION STORAGE",[
+            "No active destination storage supporting VM images was found."
+        ])
+
+    storage_labels=[
+        f"{x['storage']:<24} {x.get('type',''):<12} "
+        f"FREE {fmt_bytes(x.get('avail',0)):>10} / {fmt_bytes(x.get('total',0)):>10}"
+        for x in storages
+    ]
+    st_idx=menu(
+        storage_labels+["Back"],
+        title="SELECT DESTINATION STORAGE",
+        subtitle=f"{dst_info['hostname']} • {dst_info['version']}"
+    )
+    if st_idx is None or st_idx>=len(storages):return
+    storage=storages[st_idx]
+
+    proposed_vmid=choose_target_vmid(dst_host,dst_user,dst_password,int(vm["vmid"]))
+    vmid_text=prompt("Destination VMID",str(proposed_vmid))
+    try:target_vmid=int(vmid_text)
+    except ValueError:return show_text("INVALID VMID",[f"Invalid VMID: {vmid_text}"])
+
+    summary=[
+        f"Source      : {src_info['hostname']} ({src_host})",
+        f"Source VM   : {vm['vmid']} - {vm['name']} [{str(vm['status']).upper()}]",
+        f"Destination : {dst_info['hostname']} ({dst_host})",
+        f"Target VMID : {target_vmid}",
+        f"Storage     : {storage['storage']} ({fmt_bytes(storage.get('avail',0))} free)",
+        "",
+        "Method      : vzdump → controller staging → SHA256 → destination → qmrestore",
+        "Source VM   : PRESERVED and remains OFF",
+        "Target VM   : RESTORED but NOT automatically started",
+        "",
+        "Passwords are not stored in configuration or migration history."
+    ]
+    s=Screen();s.clear();s.header("PROXMOX → PROXMOX COLD COPY")
+    s.section("MIGRATION SUMMARY")
+    for line in summary:s.section_row(line)
+    s.section_end();s.footer("● READY TO COPY")
+    print()
+    if not yesno("Start cold copy now",False):
+        return show_text("CANCELLED",["No migration action was performed."])
+
+    source={"host":src_host,"username":src_user,"password":src_password}
+    destination={"host":dst_host,"username":dst_user,"password":dst_password}
+    print()
+    try:
+        result=cold_copy_vm(
+            source=source,
+            destination=destination,
+            vm=vm,
+            target_storage=storage["storage"],
+            target_vmid=target_vmid,
+            progress=_migration_progress,
+        )
+    finally:
+        source["password"]=""
+        destination["password"]=""
+        src_password=""
+        dst_password=""
+
+    lines=[
+        GREEN+"COPY COMPLETED SUCCESSFULLY"+RESET,
+        "",
+        f"Source VM      : {result['source']['host']} / {result['source']['vmid']} / STOPPED / PRESERVED",
+        f"Destination VM : {result['destination']['host']} / {result['destination']['vmid']} / {result['destination']['vm_status'].upper()}",
+        f"Target storage : {result['destination']['storage']}",
+        f"SHA256         : {result['sha256']}",
+        f"Controller copy: {result['controller_staging']}",
+        "",
+        "The destination VM was NOT started automatically."
+    ]
+    if result.get("missing_bridges"):
+        lines += [
+            "",
+            YELLOW+"NETWORK WARNING"+RESET,
+            "Missing destination bridge(s): "+", ".join(result["missing_bridges"]),
+            "Map the VM network before starting the restored VM."
+        ]
+    show_text("PROXMOX → PROXMOX COLD COPY",lines)
+
 def tui_migration_wizard():
+    actions=[
+        "Proxmox → Proxmox Cold Copy (Independent Hosts)",
+        "Generic Migration Plan / Preflight",
+        "Back",
+    ]
+    idx=menu(actions,title="VM MIGRATION",subtitle="Safe migration workflows")
+    if idx is None or actions[idx]=="Back":return
+    if idx==0:return tui_pve_copy_wizard()
     print(RESET)
     job_add_migration(SimpleNamespace(name=None))
     input("Press ENTER to return to the dashboard...")
@@ -233,7 +401,7 @@ def parser():
     s=sub.add_parser("hypervisor");ss=s.add_subparsers(dest="action");a=ss.add_parser("add");a.add_argument("name");a.add_argument("--type");a.add_argument("--host");a.add_argument("--credential");a.add_argument("--insecure",action="store_true");ss.add_parser("list");a=ss.add_parser("test");a.add_argument("name");a=ss.add_parser("vms");a.add_argument("name")
     s=sub.add_parser("storage");ss=s.add_subparsers(dest="action");a=ss.add_parser("add");a.add_argument("name");a.add_argument("--type");ss.add_parser("list");a=ss.add_parser("test");a.add_argument("name");a=ss.add_parser("mount");a.add_argument("name");a=ss.add_parser("unmount");a.add_argument("name")
     s=sub.add_parser("job");ss=s.add_subparsers(dest="action");a=ss.add_parser("add-backup");a.add_argument("name",nargs="?");a=ss.add_parser("add-migration");a.add_argument("name",nargs="?");ss.add_parser("list");a=ss.add_parser("run");a.add_argument("name");a=ss.add_parser("enable");a.add_argument("name");a.add_argument("--schedule");a=ss.add_parser("disable");a.add_argument("name")
-    s=sub.add_parser("email");ss=s.add_subparsers(dest="action");ss.add_parser("configure");sub.add_parser("doctor");sub.add_parser("tui");return p
+    s=sub.add_parser("email");ss=s.add_subparsers(dest="action");ss.add_parser("configure");sub.add_parser("doctor");sub.add_parser("pve-copy",help="Interactive Proxmox to Proxmox cold-copy wizard");sub.add_parser("tui");return p
 
 def main(argv=None):
     p=parser();a=p.parse_args(argv);ensure_dirs()
@@ -264,6 +432,7 @@ def main(argv=None):
         if a.action=="disable":return remove_job_timer(a.name)
     if a.cmd=="email" and a.action=="configure":return email_configure()
     if a.cmd=="doctor":print(json.dumps(doctor_report(),indent=2));return
+    if a.cmd=="pve-copy":return tui_pve_copy_wizard()
     p.print_help()
 if __name__=="__main__":
     try:main()
