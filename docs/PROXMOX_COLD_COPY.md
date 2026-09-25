@@ -28,8 +28,9 @@ The wizard asks only for:
 5. Destination Proxmox IP/hostname
 6. Destination username
 7. Destination password
-8. Destination storage selected from live inventory
-9. Destination VMID, with a safe default proposed automatically
+8. Destination storage selected from live inventory only when more than one valid target exists
+
+The destination VMID is automatic: the source VMID is reused when free; otherwise LBM-VDRC asks Proxmox for the next available guest ID.
 
 The same wizard can also be started without parameters:
 
@@ -96,6 +97,8 @@ Operator review and manual start
 The source VM is never deleted.
 
 The destination VM is never automatically started.
+
+After restore, LBM-VDRC also forces `onboot=0` on the destination VM so a destination-host reboot cannot accidentally start the copied VM before administrator validation.
 
 This avoids the risk of having the original and restored VM online at the same time with the same hostname, IP address or MAC address.
 
