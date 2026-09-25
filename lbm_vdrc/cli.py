@@ -3,7 +3,7 @@ import argparse,json,getpass,sys
 from types import SimpleNamespace
 from . import __version__
 from .core import *
-from .ui import Screen,menu,status,table_row,GREEN,RED,YELLOW,RESET
+from .ui import Screen,menu,status,table_row,GREEN,RED,YELLOW,RESET,DIM,CYAN,BOLD
 from .secrets import SecretStore
 from .storage import *
 from .hypervisors import configs as hv_configs,get as get_hv
@@ -36,7 +36,7 @@ def dashboard_lines():
         except Exception:vms="?";st="OFFLINE"
         platform={"proxmox":"Proxmox VE","pve":"Proxmox VE","esxi":"VMware ESXi","vmware":"VMware ESXi","vcenter":"VMware vCenter","hyperv":"Microsoft Hyper-V","hyper-v":"Microsoft Hyper-V"}.get(cfg.get("type","").lower(),cfg.get("type",""))
         lines.append(table_row([i,name,platform,cfg.get("host",""),vms,status(st)],[3,15,23,18,6,14]));i+=1
-    if not cfgs:lines.append("  No hypervisors configured. Add one with: lbm-vdrc hypervisor add NAME")
+    if not cfgs:lines.append("  No hypervisors configured. Add one with: vmmigration hypervisor add NAME")
     return lines
 MAIN=["Hypervisor Hosts","Virtual Machines","Backup VM","Restore VM","VM Migration","Disk Conversion","Network Mapping","Storage Mapping","Scheduled Jobs","Migration History","Backup History","Email Reports","Credential Vault","Doctor / Diagnostics","Settings","Exit"]
 
@@ -400,7 +400,7 @@ def email_configure():
     require_root();s=load_json(PATHS["settings"],{});s["email"]={"enabled":True,"host":prompt("SMTP server",""),"port":int(prompt("SMTP port","587")),"security":prompt("Security (starttls/ssl/none)","starttls"),"from":prompt("From address",""),"to":prompt("Recipient address",""),"credential":prompt("SMTP credential profile","")};save_json(PATHS["settings"],s);print("Email reporting configured.")
 
 def parser():
-    p=argparse.ArgumentParser(prog="lbm-vdrc",description=APP_NAME);p.add_argument("--version",action="version",version=f"%(prog)s {__version__}");sub=p.add_subparsers(dest="cmd")
+    p=argparse.ArgumentParser(prog="vmmigration",description=APP_NAME);p.add_argument("--version",action="version",version=f"%(prog)s {__version__}");sub=p.add_subparsers(dest="cmd")
     s=sub.add_parser("credential");ss=s.add_subparsers(dest="action");a=ss.add_parser("add");a.add_argument("name");a.add_argument("--type");a.add_argument("--username");a.add_argument("--password");ss.add_parser("list")
     s=sub.add_parser("hypervisor");ss=s.add_subparsers(dest="action");a=ss.add_parser("add");a.add_argument("name");a.add_argument("--type");a.add_argument("--host");a.add_argument("--credential");a.add_argument("--insecure",action="store_true");ss.add_parser("list");a=ss.add_parser("test");a.add_argument("name");a=ss.add_parser("vms");a.add_argument("name")
     s=sub.add_parser("storage");ss=s.add_subparsers(dest="action");a=ss.add_parser("add");a.add_argument("name");a.add_argument("--type");ss.add_parser("list");a=ss.add_parser("test");a.add_argument("name");a=ss.add_parser("mount");a.add_argument("name");a=ss.add_parser("unmount");a.add_argument("name")
