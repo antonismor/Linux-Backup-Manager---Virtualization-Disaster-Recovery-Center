@@ -9,9 +9,50 @@
 **Framework:** .NET 10 / WPF  
 **Distribution:** Self-contained single executable  
 **Author:** Antonios Mortos  
-**Designed and Development by:** [antonios.mortos@outlook.com](mailto:antonios.mortos@outlook.com)
+**Designed and Development by:** [antonios.mortos@oultook.com](mailto:antonios.mortos@oultook.com)
 
 ---
+
+
+## Binary Distribution and `vmmigration` Command
+
+The Linux migration engine can be installed as a compiled standalone executable.
+
+Run:
+
+```bash
+sudo ./install.sh
+```
+
+The installer automatically detects the supported Linux package manager, installs the required migration dependencies, builds a Nuitka one-file executable when a prebuilt binary is not present, and installs:
+
+```text
+/opt/vmmigration/vmmigration
+/usr/local/bin/vmmigration
+```
+
+Start the ANSI/color interface with:
+
+```bash
+sudo vmmigration
+```
+
+The legacy `lbm-vdrc` command is retained as a compatibility alias.
+
+The installed `/opt/vmmigration` directory contains the executable binary and does **not** receive the Python source tree.
+
+The application and installer display:
+
+```text
+Design and Development by : antonios.mortos@oultook.com
+```
+
+### Source-code visibility
+
+Compiling with Nuitka makes the deployed application substantially harder to inspect than distributing plain Python files, but compilation is not cryptographic source-code secrecy.
+
+If the source repository itself is public, the source remains visible through GitHub and repository history. For a binary-only public distribution, keep the authoritative source repository private and publish only compiled release artifacts and the bootstrap installer.
+
 
 ## Overview
 
@@ -368,7 +409,7 @@ The author is not responsible for data loss, service interruption or configurati
 **Antonios Mortos**
 
 Designed and Development by:  
-**[antonios.mortos@outlook.com](mailto:antonios.mortos@outlook.com)**
+**[antonios.mortos@oultook.com](mailto:antonios.mortos@oultook.com)**
 
 ---
 
