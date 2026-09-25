@@ -236,23 +236,23 @@ def tui_pve_copy_wizard():
             "No active destination storage supporting VM images was found."
         ])
 
-    storage_labels=[
-        f"{x['storage']:<24} {x.get('type',''):<12} "
-        f"FREE {fmt_bytes(x.get('avail',0)):>10} / {fmt_bytes(x.get('total',0)):>10}"
-        for x in storages
-    ]
-    st_idx=menu(
-        storage_labels+["Back"],
-        title="SELECT DESTINATION STORAGE",
-        subtitle=f"{dst_info['hostname']} • {dst_info['version']}"
-    )
-    if st_idx is None or st_idx>=len(storages):return
-    storage=storages[st_idx]
+    if len(storages)==1:
+        storage=storages[0]
+    else:
+        storage_labels=[
+            f"{x['storage']:<24} {x.get('type',''):<12} "
+            f"FREE {fmt_bytes(x.get('avail',0)):>10} / {fmt_bytes(x.get('total',0)):>10}"
+            for x in storages
+        ]
+        st_idx=menu(
+            storage_labels+["Back"],
+            title="SELECT DESTINATION STORAGE",
+            subtitle=f"{dst_info['hostname']} • {dst_info['version']}"
+        )
+        if st_idx is None or st_idx>=len(storages):return
+        storage=storages[st_idx]
 
-    proposed_vmid=choose_target_vmid(dst_host,dst_user,dst_password,int(vm["vmid"]))
-    vmid_text=prompt("Destination VMID",str(proposed_vmid))
-    try:target_vmid=int(vmid_text)
-    except ValueError:return show_text("INVALID VMID",[f"Invalid VMID: {vmid_text}"])
+    target_vmid=choose_target_vmid(dst_host,dst_user,dst_password,int(vm["vmid"]))
 
     summary=[
         f"Source      : {src_info['hostname']} ({src_host})",
@@ -264,6 +264,7 @@ def tui_pve_copy_wizard():
         "Method      : vzdump → controller staging → SHA256 → destination → qmrestore",
         "Source VM   : PRESERVED and remains OFF",
         "Target VM   : RESTORED but NOT automatically started",
+        "On-boot      : FORCED OFF until administrator validation",
         "",
         "Passwords are not stored in configuration or migration history."
     ]
@@ -311,6 +312,9 @@ def tui_pve_copy_wizard():
             "Missing destination bridge(s): "+", ".join(result["missing_bridges"]),
             "Map the VM network before starting the restored VM."
         ]
+    if result.get("hardware_warnings"):
+        lines += ["",YELLOW+"HARDWARE / FIRMWARE WARNINGS"+RESET]
+        lines += ["• "+x for x in result["hardware_warnings"]]
     show_text("PROXMOX → PROXMOX COLD COPY",lines)
 
 def tui_migration_wizard():
