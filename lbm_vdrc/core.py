@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Any
 
 APP_NAME = "LINUX BACKUP MANAGER - VIRTUALIZATION & DISASTER RECOVERY CENTER"
-AUTHOR = "Designed & Developed by antonios.mortos@outlook.com"
+AUTHOR = "Design and Development by : antonios.mortos@oultook.com"
 ETC = Path(os.getenv("LBMVDRC_ETC", "/etc/lbm-vdrc"))
 STATE = Path(os.getenv("LBMVDRC_STATE", "/var/lib/lbm-vdrc"))
 LOGDIR = Path(os.getenv("LBMVDRC_LOG", "/var/log/lbm-vdrc"))

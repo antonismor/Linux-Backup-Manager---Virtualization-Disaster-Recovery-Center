@@ -1,0 +1,48 @@
+name: Build Linux Binary
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feature/proxmox-cold-copy-wizard
+    tags:
+      - "v*"
+
+jobs:
+  build-linux-x86_64:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.11'
+
+      - name: Install binary build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential patchelf ccache python3-venv
+
+      - name: Build standalone binary
+        run: |
+          chmod +x build-binary.sh
+          ./build-binary.sh
+
+      - name: Binary smoke test
+        run: |
+          ./dist/vmmigration --version
+          file ./dist/vmmigration
+          sha256sum ./dist/vmmigration
+
+      - name: Package artifact
+        run: |
+          tar -C dist -czf vmmigration-linux-x86_64.tar.gz vmmigration vmmigration.sha256
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: vmmigration-linux-x86_64
+          path: vmmigration-linux-x86_64.tar.gz
+          if-no-files-found: error
